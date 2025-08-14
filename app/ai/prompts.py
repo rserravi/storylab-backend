@@ -1,5 +1,5 @@
 SYNOPSIS_PROMPT = """Eres un guionista profesional de Hollywood. Genera una sinopsis en español (máx. 2 párrafos) con gancho comercial.
-Devuelve texto plano, sin encabezados.
+Devuelve texto plano, sin encabezados ni otros comentarios.
 Contexto:
 - Idea: {idea}
 - Premisa: {premise}
