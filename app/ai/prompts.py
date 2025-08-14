@@ -28,7 +28,7 @@ TURNING_POINTS_PROMPT = """Enumera los cinco Puntos de Giro canónicos con una b
 Basados en el siguiente Tratamiento:
 {treatment}
 
-Devuelve únicamente un array JSON válido con cinco objetos {id, description} (ids: TP1–TP5), sin texto adicional ni marcadores de código.
+Devuelve únicamente un array JSON válido con cinco objetos {{id, description}} (ids: TP1–TP5), sin texto adicional ni marcadores de código.
 Ejemplo: [{{"id":"TP1","description":"..."}}]
 """
 
