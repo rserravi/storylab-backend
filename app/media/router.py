@@ -7,6 +7,7 @@ router = APIRouter(prefix="/ai", tags=["AI","Media"])
 class ImageIn(BaseModel):
     prompt: str
     style: str  # "fast" | "quality"
+    project_id: str
 
 class ImageOut(BaseModel):
     url: str
