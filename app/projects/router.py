@@ -13,15 +13,21 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=2, max_length=128)
     description: Optional[str] = None
+    synopsis: Optional[str] = None
+    treatment: Optional[str] = None
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=128)
     description: Optional[str] = None
+    synopsis: Optional[str] = None
+    treatment: Optional[str] = None
 
 class ProjectOut(BaseModel):
     id: str
     name: str
     description: Optional[str]
+    synopsis: Optional[str]
+    treatment: Optional[str]
     owner_id: str
     created_at: str
     updated_at: str
@@ -45,10 +51,19 @@ async def list_projects(
     if q:
         stmt = stmt.where(Project.name.ilike(f"%{q}%"))
     rows = (await session.execute(stmt)).scalars().all()
-    return [ProjectOut(
-        id=r.id, name=r.name, description=r.description, owner_id=r.owner_id,
-        created_at=r.created_at.isoformat(), updated_at=r.updated_at.isoformat()
-    ) for r in rows]
+    return [
+        ProjectOut(
+            id=r.id,
+            name=r.name,
+            description=r.description,
+            synopsis=r.synopsis,
+            treatment=r.treatment,
+            owner_id=r.owner_id,
+            created_at=r.created_at.isoformat(),
+            updated_at=r.updated_at.isoformat(),
+        )
+        for r in rows
+    ]
 
 @router.post("", response_model=ProjectOut, status_code=201)
 async def create_project(
@@ -56,13 +71,25 @@ async def create_project(
     me: Annotated[UserPublic, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    p = Project(name=payload.name, description=payload.description, owner_id=me.id)
+    p = Project(
+        name=payload.name,
+        description=payload.description,
+        synopsis=payload.synopsis,
+        treatment=payload.treatment,
+        owner_id=me.id,
+    )
     session.add(p)
     await session.commit()
     await session.refresh(p)
     return ProjectOut(
-        id=p.id, name=p.name, description=p.description, owner_id=p.owner_id,
-        created_at=p.created_at.isoformat(), updated_at=p.updated_at.isoformat()
+        id=p.id,
+        name=p.name,
+        description=p.description,
+        synopsis=p.synopsis,
+        treatment=p.treatment,
+        owner_id=p.owner_id,
+        created_at=p.created_at.isoformat(),
+        updated_at=p.updated_at.isoformat(),
     )
 
 @router.get("/{project_id}", response_model=ProjectOut)
@@ -70,8 +97,14 @@ async def get_project(project_id: str, me: Annotated[UserPublic, Depends(get_cur
     p = await session.get(Project, project_id)
     _ensure_owner(p, me.id)
     return ProjectOut(
-        id=p.id, name=p.name, description=p.description, owner_id=p.owner_id,
-        created_at=p.created_at.isoformat(), updated_at=p.updated_at.isoformat()
+        id=p.id,
+        name=p.name,
+        description=p.description,
+        synopsis=p.synopsis,
+        treatment=p.treatment,
+        owner_id=p.owner_id,
+        created_at=p.created_at.isoformat(),
+        updated_at=p.updated_at.isoformat(),
     )
 
 @router.patch("/{project_id}", response_model=ProjectOut)
@@ -87,11 +120,21 @@ async def update_project(
         p.name = payload.name
     if payload.description is not None:
         p.description = payload.description
+    if payload.synopsis is not None:
+        p.synopsis = payload.synopsis
+    if payload.treatment is not None:
+        p.treatment = payload.treatment
     await session.commit()
     await session.refresh(p)
     return ProjectOut(
-        id=p.id, name=p.name, description=p.description, owner_id=p.owner_id,
-        created_at=p.created_at.isoformat(), updated_at=p.updated_at.isoformat()
+        id=p.id,
+        name=p.name,
+        description=p.description,
+        synopsis=p.synopsis,
+        treatment=p.treatment,
+        owner_id=p.owner_id,
+        created_at=p.created_at.isoformat(),
+        updated_at=p.updated_at.isoformat(),
     )
 
 @router.delete("/{project_id}", status_code=204)
