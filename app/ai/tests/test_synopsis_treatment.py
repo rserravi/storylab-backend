@@ -1,3 +1,4 @@
+import json
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -35,7 +36,13 @@ async def client(session, monkeypatch):
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[get_current_user] = override_get_current_user
 
-    responses = ["FAKE SYNOPSIS", "FAKE TREATMENT"]
+    responses = [
+        "FAKE SYNOPSIS",
+        "FAKE TREATMENT",
+        json.dumps([
+            {"id": "TP1", "title": "Title", "description": "Desc"}
+        ]),
+    ]
 
     async def fake_generate(self, model, prompt, **kwargs):
         return responses.pop(0)
@@ -97,3 +104,9 @@ async def test_generate_get_patch_synopsis_treatment(client):
     )
     assert resp.status_code == 200
     assert resp.json()["treatment"] == "NEW TREATMENT"
+
+    # generate turning points
+    tp_payload = {"project_id": project_id}
+    resp = await client.post("/ai/turning-points", json=tp_payload)
+    assert resp.status_code == 200
+    assert resp.json()["points"][0]["id"] == "TP1"

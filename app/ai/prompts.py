@@ -18,7 +18,8 @@ Logline: {logline}
 """
 
 TURNING_POINTS_PROMPT = """Propón 5 Puntos de Giro (S3), con título y descripción (2-3 frases cada uno).
-Género: {genre}. Tema: {theme}. Premisa: {premise}.
+Basados en el siguiente Tratamiento:
+{treatment}
 Devuelve JSON: [{{"id":"TP1","title":"...","description":"..."}}...]
 """
 
