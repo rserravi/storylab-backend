@@ -7,7 +7,7 @@ from app.settings import settings
 from app.utils.ollama_client import OllamaClient
 from app.auth.security import get_current_user, UserPublic
 from app.db.database import get_session
-from app.db.models import Project
+from app.db.models import Project, Screenplay
 from .prompts import (
     SYNOPSIS_PROMPT,
     TREATMENT_PROMPT,
@@ -129,6 +129,7 @@ class TurningPointItem(BaseModel):
 
 class TurningPointsIn(BaseModel):
     project_id: str
+    screenplay_id: str
     screenwriter: bool = True
 
 
@@ -146,6 +147,9 @@ async def generate_turning_points(
     project = await session.get(Project, payload.project_id)
     if not project or not project.treatment:
         raise HTTPException(404, "Project not found or missing treatment.")
+    screenplay = await session.get(Screenplay, payload.screenplay_id)
+    if not screenplay or screenplay.owner_id != me.id:
+        raise HTTPException(404, "Screenplay not found.")
     prompt = TURNING_POINTS_PROMPT.format(treatment=project.treatment)
     async with OllamaClient() as client:
         text = await client.generate(model=model, prompt=prompt)
@@ -154,6 +158,9 @@ async def generate_turning_points(
         items = [TurningPointItem(**tp) for tp in data]
     except Exception:
         raise HTTPException(502, "AI returned invalid JSON for turning points.")
+    screenplay.turning_points = [tp.model_dump() for tp in items]
+    await session.commit()
+    await session.refresh(screenplay)
     return {"points": items}
 
 
