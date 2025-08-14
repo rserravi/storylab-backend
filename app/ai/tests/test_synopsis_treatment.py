@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 
 from app.main import app
 from app.db.models import Base, User
+from app.turning_points import TURNING_POINT_TITLES
 from app.db.database import get_session
 from app.auth.security import get_current_user, UserPublic, hash_password
 
@@ -40,7 +41,7 @@ async def client(session, monkeypatch):
         "FAKE SYNOPSIS",
         "FAKE TREATMENT",
         json.dumps([
-            {"id": "TP1", "title": "Title", "description": "Desc"}
+            {"id": "TP1", "description": "Desc"}
         ]),
     ]
 
@@ -105,8 +106,16 @@ async def test_generate_get_patch_synopsis_treatment(client):
     assert resp.status_code == 200
     assert resp.json()["treatment"] == "NEW TREATMENT"
 
+    # create screenplay for turning points
+    resp = await client.post(
+        "/screenplays",
+        json={"project_id": project_id, "title": "Script"},
+    )
+    assert resp.status_code == 201
+    screenplay_id = resp.json()["id"]
+
     # generate turning points
-    tp_payload = {"project_id": project_id}
+    tp_payload = {"project_id": project_id, "screenplay_id": screenplay_id}
     resp = await client.post("/ai/turning-points", json=tp_payload)
     assert resp.status_code == 200
-    assert resp.json()["points"][0]["id"] == "TP1"
+    assert resp.json()["points"][0]["title"] == TURNING_POINT_TITLES["TP1"]

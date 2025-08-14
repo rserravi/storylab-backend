@@ -18,6 +18,7 @@ from .prompts import (
     DIALOGUE_POLISH_PROMPT,
     REVIEW_PROMPT,
 )
+from app.turning_points import TURNING_POINT_TITLES
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -123,8 +124,8 @@ async def generate_treatment(
 # ---------- Turning Points ----------
 class TurningPointItem(BaseModel):
     id: str
-    title: str
     description: str
+    title: str
 
 
 class TurningPointsIn(BaseModel):
@@ -155,7 +156,16 @@ async def generate_turning_points(
         text = await client.generate(model=model, prompt=prompt)
     try:
         data = json.loads(text)
-        items = [TurningPointItem(**tp) for tp in data]
+        items = []
+        for tp in data:
+            title = TURNING_POINT_TITLES.get(tp["id"])
+            if not title:
+                raise KeyError
+            items.append(
+                TurningPointItem(
+                    id=tp["id"], description=tp["description"], title=title
+                )
+            )
     except Exception:
         raise HTTPException(502, "AI returned invalid JSON for turning points.")
     screenplay.turning_points = [tp.model_dump() for tp in items]
