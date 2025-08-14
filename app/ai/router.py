@@ -34,7 +34,7 @@ class SynopsisIn(BaseModel):
     premise: str
     mainTheme: str
     genre: str
-    subgenre: list[str] | None = None
+    subgenres: Optional[str] = None
     project_id: str
     screenwriter: bool = False
 
@@ -50,7 +50,7 @@ async def generate_synopsis(payload: SynopsisIn, me: Annotated[UserPublic, Depen
         premise=payload.premise,
         theme=payload.mainTheme,
         genre=payload.genre,
-        subgenres=subgenres,
+        subgenres=payload.subgenres or "",
     )
     async with OllamaClient() as client:
         text = await client.generate(model=model, prompt=prompt)
