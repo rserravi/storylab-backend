@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.settings import settings
 
-router = APIRouter(prefix="/ai", tags=["AI","Media"])
+router = APIRouter(prefix="/media", tags=["AI", "Media"])
 
 class ImageIn(BaseModel):
     prompt: str
