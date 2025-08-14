@@ -26,6 +26,14 @@ class ProjectOut(BaseModel):
     created_at: str
     updated_at: str
 
+
+class TreatmentPatch(BaseModel):
+    treatment: str
+
+
+class TreatmentOut(BaseModel):
+    treatment: str
+
 def _iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -100,3 +108,30 @@ async def delete_project(project_id: str, me: Annotated[UserPublic, Depends(get_
     _ensure_owner(p, me.id)
     await session.delete(p)
     await session.commit()
+
+
+@router.get("/{project_id}/treatment", response_model=TreatmentOut)
+async def get_treatment(
+    project_id: str,
+    me: Annotated[UserPublic, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    p = await session.get(Project, project_id)
+    _ensure_owner(p, me.id)
+    if not p.treatment:
+        raise HTTPException(404, "Treatment not found.")
+    return {"treatment": p.treatment}
+
+
+@router.patch("/{project_id}/treatment", response_model=TreatmentOut)
+async def patch_treatment(
+    project_id: str,
+    payload: TreatmentPatch,
+    me: Annotated[UserPublic, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    p = await session.get(Project, project_id)
+    _ensure_owner(p, me.id)
+    p.treatment = payload.treatment
+    await session.commit()
+    return {"treatment": p.treatment}
