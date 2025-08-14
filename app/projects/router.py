@@ -34,6 +34,12 @@ class ProjectOut(BaseModel):
     created_at: str
     updated_at: str
 
+class TreatmentPatch(BaseModel):
+    treatment: str
+
+
+class TreatmentOut(BaseModel):
+    treatment: str
 class SynopsisPatch(BaseModel):
     synopsis: Optional[str] = None
 
@@ -159,6 +165,8 @@ async def delete_project(
     await session.commit()
 
 
+@router.get("/{project_id}/treatment", response_model=TreatmentOut)
+async def get_treatment(
 @router.get("/{project_id}/synopsis", response_model=SynopsisOut)
 async def get_synopsis(
     project_id: str,
@@ -167,6 +175,15 @@ async def get_synopsis(
 ):
     p = await session.get(Project, project_id)
     _ensure_owner(p, me.id)
+    if not p.treatment:
+        raise HTTPException(404, "Treatment not found.")
+    return {"treatment": p.treatment}
+
+
+@router.patch("/{project_id}/treatment", response_model=TreatmentOut)
+async def patch_treatment(
+    project_id: str,
+    payload: TreatmentPatch,
     return {"synopsis": p.synopsis}
 
 
@@ -179,6 +196,9 @@ async def patch_synopsis(
 ):
     p = await session.get(Project, project_id)
     _ensure_owner(p, me.id)
+    p.treatment = payload.treatment
+    await session.commit()
+    return {"treatment": p.treatment}
     if "synopsis" in payload.model_fields_set:
         p.synopsis = payload.synopsis
         await session.commit()
