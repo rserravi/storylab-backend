@@ -56,11 +56,15 @@ class ScreenplayCreate(BaseModel):
     project_id: str
     title: str
     logline: Optional[str] = None
+    synopsis: Optional[str] = None
+    treatment: Optional[str] = None
 
 
 class ScreenplayUpdate(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1)
     logline: Optional[str] = None
+    synopsis: Optional[str] = None
+    treatment: Optional[str] = None
     state: Optional[WorkflowState] = None
     turning_points: Optional[list[TurningPointBase]] = None
     characters: Optional[list[Character]] = None
@@ -75,6 +79,8 @@ class ScreenplayOut(BaseModel):
     owner_id: str
     title: str
     logline: Optional[str]
+    synopsis: Optional[str]
+    treatment: Optional[str]
     state: WorkflowState
     turning_points: list[TurningPoint]
     characters: list[Character]
@@ -104,6 +110,8 @@ async def create_screenplay(
         owner_id=me.id,
         title=payload.title,
         logline=payload.logline,
+        synopsis=payload.synopsis,
+        treatment=payload.treatment,
         state="S1",
         turning_points=[],
         characters=[],
@@ -120,6 +128,8 @@ async def create_screenplay(
         owner_id=sp.owner_id,
         title=sp.title,
         logline=sp.logline,
+        synopsis=sp.synopsis,
+        treatment=sp.treatment,
         state=sp.state,
         turning_points=sp.turning_points,
         characters=sp.characters,
@@ -146,6 +156,8 @@ async def get_screenplay(
         owner_id=sp.owner_id,
         title=sp.title,
         logline=sp.logline,
+        synopsis=sp.synopsis,
+        treatment=sp.treatment,
         state=sp.state,
         turning_points=sp.turning_points,
         characters=sp.characters,
@@ -170,6 +182,8 @@ async def update_screenplay(
     for field in [
         "title",
         "logline",
+        "synopsis",
+        "treatment",
         "state",
         "turning_points",
         "characters",
@@ -212,6 +226,8 @@ async def update_screenplay(
         owner_id=sp.owner_id,
         title=sp.title,
         logline=sp.logline,
+        synopsis=sp.synopsis,
+        treatment=sp.treatment,
         state=sp.state,
         turning_points=sp.turning_points,
         characters=sp.characters,

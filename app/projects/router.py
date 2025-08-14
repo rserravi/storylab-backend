@@ -14,37 +14,18 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=2, max_length=128)
     description: Optional[str] = None
-    synopsis: Optional[str] = None
-    treatment: Optional[str] = None
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=128)
     description: Optional[str] = None
-    synopsis: Optional[str] = None
-    treatment: Optional[str] = None
 
 class ProjectOut(BaseModel):
     id: str
     name: str
     description: Optional[str]
-    synopsis: Optional[str]
-    treatment: Optional[str]
     owner_id: str
     created_at: str
     updated_at: str
-
-class TreatmentPatch(BaseModel):
-    treatment: str
-
-
-class TreatmentOut(BaseModel):
-    treatment: str
-class SynopsisPatch(BaseModel):
-    synopsis: Optional[str] = None
-
-
-class SynopsisOut(BaseModel):
-    synopsis: Optional[str]
 
 def _iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -72,8 +53,6 @@ async def list_projects(
             id=r.id,
             name=r.name,
             description=r.description,
-            synopsis=r.synopsis,
-            treatment=r.treatment,
             owner_id=r.owner_id,
             created_at=r.created_at.isoformat(),
             updated_at=r.updated_at.isoformat(),
@@ -90,8 +69,6 @@ async def create_project(
     p = Project(
         name=payload.name,
         description=payload.description,
-        synopsis=payload.synopsis,
-        treatment=payload.treatment,
         owner_id=me.id,
     )
     session.add(p)
@@ -101,8 +78,6 @@ async def create_project(
         id=p.id,
         name=p.name,
         description=p.description,
-        synopsis=p.synopsis,
-        treatment=p.treatment,
         owner_id=p.owner_id,
         created_at=p.created_at.isoformat(),
         updated_at=p.updated_at.isoformat(),
@@ -121,8 +96,6 @@ async def get_project(
         id=p.id,
         name=p.name,
         description=p.description,
-        synopsis=p.synopsis,
-        treatment=p.treatment,
         owner_id=p.owner_id,
         created_at=p.created_at.isoformat(),
         updated_at=p.updated_at.isoformat(),
@@ -142,19 +115,12 @@ async def update_project(
         p.name = payload.name
     if payload.description is not None:
         p.description = payload.description
-    if payload.synopsis is not None:
-        p.synopsis = payload.synopsis
-
-    if payload.treatment is not None:
-        p.treatment = payload.treatment
     await session.commit()
     await session.refresh(p)
     return ProjectOut(
         id=p.id,
         name=p.name,
         description=p.description,
-        synopsis=p.synopsis,
-        treatment=p.treatment,
         owner_id=p.owner_id,
         created_at=p.created_at.isoformat(),
         updated_at=p.updated_at.isoformat(),
@@ -173,55 +139,3 @@ async def delete_project(
     await session.commit()
 
 
-@router.get("/{project_id}/treatment", response_model=TreatmentOut)
-async def get_treatment(
-    project_id: str,
-    me: Annotated[UserPublic, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
-):
-    p = await session.get(Project, project_id)
-    _ensure_owner(p, me.id)
-    if not p.treatment:
-        raise HTTPException(404, "Treatment not found.")
-    return {"treatment": p.treatment}
-
-
-@router.patch("/{project_id}/treatment", response_model=TreatmentOut)
-async def patch_treatment(
-    project_id: str,
-    payload: TreatmentPatch,
-    me: Annotated[UserPublic, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
-):
-    p = await session.get(Project, project_id)
-    _ensure_owner(p, me.id)
-    p.treatment = payload.treatment
-    await session.commit()
-    return {"treatment": p.treatment}
-
-
-@router.get("/{project_id}/synopsis", response_model=SynopsisOut)
-async def get_synopsis(
-    project_id: str,
-    me: Annotated[UserPublic, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
-):
-    p = await session.get(Project, project_id)
-    _ensure_owner(p, me.id)
-    return {"synopsis": p.synopsis}
-
-
-@router.patch("/{project_id}/synopsis", response_model=SynopsisOut)
-async def patch_synopsis(
-    project_id: str,
-    payload: SynopsisPatch,
-    me: Annotated[UserPublic, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
-):
-    p = await session.get(Project, project_id)
-    _ensure_owner(p, me.id)
-    if "synopsis" in payload.model_fields_set:
-        p.synopsis = payload.synopsis
-        await session.commit()
-        await session.refresh(p)
-    return {"synopsis": p.synopsis}

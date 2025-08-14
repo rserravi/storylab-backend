@@ -62,6 +62,11 @@ async def test_generate_get_patch_synopsis_treatment(client):
     resp = await client.post("/projects", json={"name": "My Project"})
     assert resp.status_code == 201
     project_id = resp.json()["id"]
+    # create screenplay
+    sp_payload = {"project_id": project_id, "title": "My Script"}
+    resp = await client.post("/screenplays", json=sp_payload)
+    assert resp.status_code == 201
+    screenplay_id = resp.json()["id"]
 
     # generate synopsis
     syn_payload = {
@@ -69,7 +74,7 @@ async def test_generate_get_patch_synopsis_treatment(client):
         "premise": "premise",
         "mainTheme": "theme",
         "genre": "genre",
-        "project_id": project_id,
+        "screenplay_id": screenplay_id,
     }
     resp = await client.post("/ai/synopsis", json=syn_payload)
     assert resp.status_code == 200
@@ -78,21 +83,21 @@ async def test_generate_get_patch_synopsis_treatment(client):
     assert data["iaLog"]["original_message"] == "FAKE SYNOPSIS"
     assert "time_thinking" in data["iaLog"]
 
-    # GET project to verify synopsis
-    resp = await client.get(f"/projects/{project_id}")
+    # GET screenplay to verify synopsis
+    resp = await client.get(f"/screenplays/{screenplay_id}")
     assert resp.status_code == 200
     assert resp.json()["synopsis"] == "FAKE SYNOPSIS"
     assert resp.json()["treatment"] is None
 
     # PATCH synopsis
     resp = await client.patch(
-        f"/projects/{project_id}", json={"synopsis": "NEW SYNOPSIS"}
+        f"/screenplays/{screenplay_id}", json={"synopsis": "NEW SYNOPSIS"}
     )
     assert resp.status_code == 200
     assert resp.json()["synopsis"] == "NEW SYNOPSIS"
 
     # generate treatment
-    treat_payload = {"logline": "line", "project_id": project_id}
+    treat_payload = {"logline": "line", "screenplay_id": screenplay_id}
     resp = await client.post("/ai/treatment", json=treat_payload)
     assert resp.status_code == 200
     data = resp.json()
@@ -100,27 +105,20 @@ async def test_generate_get_patch_synopsis_treatment(client):
     assert data["iaLog"]["original_message"] == "FAKE TREATMENT"
     assert "model" in data["iaLog"]
 
-    # GET project to verify treatment
-    resp = await client.get(f"/projects/{project_id}")
+    # GET screenplay to verify treatment
+    resp = await client.get(f"/screenplays/{screenplay_id}")
     assert resp.status_code == 200
     assert resp.json()["treatment"] == "FAKE TREATMENT"
 
     # PATCH treatment
     resp = await client.patch(
-        f"/projects/{project_id}", json={"treatment": "NEW TREATMENT"}
+        f"/screenplays/{screenplay_id}", json={"treatment": "NEW TREATMENT"}
     )
     assert resp.status_code == 200
     assert resp.json()["treatment"] == "NEW TREATMENT"
 
-    # create screenplay
-    sp_payload = {"project_id": project_id, "title": "My Script"}
-    resp = await client.post("/screenplays", json=sp_payload)
-
-    assert resp.status_code == 201
-    screenplay_id = resp.json()["id"]
-
     # generate turning points
-    tp_payload = {"project_id": project_id, "screenplay_id": screenplay_id}
+    tp_payload = {"screenplay_id": screenplay_id}
     resp = await client.post("/ai/turning-points", json=tp_payload)
     assert resp.status_code == 200
     data = resp.json()

@@ -47,7 +47,7 @@ async def client(session):
 
 
 async def create_project_and_screenplay(session, user):
-    project = Project(name="Proj", owner_id=user.id, synopsis="syn", treatment="treat")
+    project = Project(name="Proj", owner_id=user.id)
     session.add(project)
     await session.commit()
     await session.refresh(project)
@@ -57,6 +57,8 @@ async def create_project_and_screenplay(session, user):
         owner_id=user.id,
         title="Script",
         logline=None,
+        synopsis="syn",
+        treatment="treat",
         state="S1",
         turning_points=[],
         characters=[],
@@ -82,7 +84,7 @@ async def test_turning_points_valid_json(client, session, monkeypatch):
 
     resp = await client.post(
         "/ai/turning-points",
-        json={"project_id": project.id, "screenplay_id": screenplay.id},
+        json={"screenplay_id": screenplay.id},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -112,7 +114,7 @@ async def test_turning_points_invalid_json(client, session, monkeypatch):
 
     resp = await client.post(
         "/ai/turning-points",
-        json={"project_id": project.id, "screenplay_id": screenplay.id},
+        json={"screenplay_id": screenplay.id},
     )
     assert resp.status_code == 502
     data = resp.json()["detail"]
