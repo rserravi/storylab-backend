@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   db:
     image: postgres:16
@@ -7,9 +8,14 @@ services:
       POSTGRES_DB: storylab
       POSTGRES_USER: storylab
       POSTGRES_PASSWORD: storylab
-    ports: ["5433:5432"]
+    ports: ["5433:5432"] # host:container
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storylab -d storylab"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   ollama:
     image: ollama/ollama:latest
@@ -17,23 +23,58 @@ services:
     ports: ["11434:11434"]
     volumes:
       - ollama:/root/.ollama
+    environment:
+      # Mantén los modelos calientes un rato (opcional)
+      OLLAMA_KEEP_ALIVE: "30m"
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "curl -fsS http://localhost:11434/api/tags >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # (opcional) pull de modelos en arranque; monta el mismo volumen para cachear
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      - ollama
+    restart: "no"
+    volumes:
+      - ollama:/root/.ollama
+    entrypoint: ["/bin/bash","-lc"]
+    command: >
+      "set -e;
+       echo 'Esperando a Ollama...';
+       until curl -fsS http://ollama:11434/api/tags >/dev/null 2>&1; do sleep 2; done;
+       echo 'Pull llama3.1:8b';  ollama pull llama3.1:8b;
+       echo 'Pull qwen2.5:32b';  ollama pull qwen2.5:32b;
+       echo 'Pull openhermes';   ollama pull openhermes;
+       echo 'Modelos listos.'"
 
   api:
     build: .
     command: uvicorn app.main:app --host 0.0.0.0 --port 8080
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
-      - DATABASE_URL=postgresql+asyncpg://storylab:storylab@db:5432/storylab
+      # ⚠️ Usamos psycopg tanto para async como para sync
+      - DATABASE_URL=postgresql+psycopg://storylab:storylab@db:5432/storylab
       - SYNC_DATABASE_URL=postgresql+psycopg://storylab:storylab@db:5432/storylab
       - JWT_SECRET=${JWT_SECRET:-dev-secret}
+      # Model routing
       - AI_TEXT_DEFAULT=${AI_TEXT_DEFAULT:-llama3.1:8b}
       - AI_TEXT_SCREENWRITER=${AI_TEXT_SCREENWRITER:-qwen2.5:32b}
-      - AI_TEXT_SCENE_DEFAULT=${AI_TEXT_SCENE_DEFAULT:-openhermes:7b}
-      - AI_TEXT_SCENE_CREATIVE=${AI_TEXT_SCENE_CREATIVE:-mythomax:13b}
+      - AI_TEXT_SCENE_DEFAULT=${AI_TEXT_SCENE_DEFAULT:-openhermes}
+      - AI_TEXT_SCENE_CREATIVE=${AI_TEXT_SCENE_CREATIVE:-qwen2.5:32b}
+      # Imagen (si lo usas después)
       - AI_IMAGE_FAST=${AI_IMAGE_FAST:-sdxl-turbo}
       - AI_IMAGE_QUALITY=${AI_IMAGE_QUALITY:-sdxl}
     ports: ["8080:8080"]
-    depends_on: [db, ollama]
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
     volumes:
       - ./:/app
     working_dir: /app

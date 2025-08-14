@@ -1,10 +1,13 @@
 [tool.poetry]
 name = "storylab-backend"
 version = "0.1.0"
+packages = [{ include = "app" }]
 description = "Backend API para Storylab con FastAPI, SQLAlchemy y AI Engines"
 authors = ["Ruben Serra <tu_email@example.com>"]
 license = "Apache-2.0"
 readme = "README.md"
+package-mode = false
+
 
 [tool.poetry.dependencies]
 python = "^3.13"
@@ -13,8 +16,8 @@ uvicorn = "^0.30.6"
 pydantic = { version = "^2.9.2", extras = ["email"] }
 sqlalchemy = "^2.0.34"
 alembic = "^1.13.2"
-asyncpg = "^0.29.0"
 psycopg = { version = "^3.2.9", extras = ["binary"] }
+greenlet = "^3.0.3"
 python-dotenv = "^1.0.1"
 passlib = { version = "^1.7.4", extras = ["bcrypt"] }
 python-jose = "^3.3.0"
