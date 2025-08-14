@@ -1,0 +1,52 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: storylab
+      POSTGRES_USER: storylab
+      POSTGRES_PASSWORD: storylab
+    ports: ["5433:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports: ["11434:11434"]
+    volumes:
+      - ollama:/root/.ollama
+
+  api:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8080
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - DATABASE_URL=postgresql+asyncpg://storylab:storylab@db:5432/storylab
+      - SYNC_DATABASE_URL=postgresql+psycopg://storylab:storylab@db:5432/storylab
+      - JWT_SECRET=${JWT_SECRET:-dev-secret}
+      - AI_TEXT_DEFAULT=${AI_TEXT_DEFAULT:-llama3.1:8b}
+      - AI_TEXT_SCREENWRITER=${AI_TEXT_SCREENWRITER:-qwen2.5:32b}
+      - AI_TEXT_SCENE_DEFAULT=${AI_TEXT_SCENE_DEFAULT:-openhermes:7b}
+      - AI_TEXT_SCENE_CREATIVE=${AI_TEXT_SCENE_CREATIVE:-mythomax:13b}
+      - AI_IMAGE_FAST=${AI_IMAGE_FAST:-sdxl-turbo}
+      - AI_IMAGE_QUALITY=${AI_IMAGE_QUALITY:-sdxl}
+    ports: ["8080:8080"]
+    depends_on: [db, ollama]
+    volumes:
+      - ./:/app
+    working_dir: /app
+
+  # comfyui (opcional, para imágenes)
+  # comfyui:
+  #   image: ghcr.io/comfyanonymous/comfyui:latest
+  #   ports: ["8188:8188"]
+  #   volumes:
+  #     - comfyui:/root/ComfyUI
+  #   restart: unless-stopped
+
+volumes:
+  pgdata:
+  ollama:
+  comfyui:
