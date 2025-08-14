@@ -115,7 +115,9 @@ async def generate_treatment(
     )
     async with OllamaClient() as client:
         text = await client.generate(model=model, prompt=prompt)
-    return {"treatment": text.strip()}
+    project.treatment = text.strip()
+    await session.commit()
+    return {"treatment": project.treatment}
 
 
 # ---------- Turning Points ----------
