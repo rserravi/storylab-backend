@@ -15,6 +15,8 @@ Los endpoints que generan contenido aceptan ahora un campo `project_id` para aso
 - `POST /ai/review`
 - `POST /ai/image`
 
+El endpoint `POST /ai/treatment` ahora guarda el tratamiento generado en la base de datos del proyecto asociado.
+
 ### Ejemplo de solicitud
 
 ```json
@@ -32,6 +34,36 @@ POST /ai/image
   "project_id": "123",
   "prompt": "Atardecer en la montaña",
   "style": "fast"
+}
+```
+
+## Ejemplos de sinopsis y tratamiento de proyectos
+
+```json
+GET /projects/123/synopsis
+{
+  "synopsis": "Sinopsis actual del proyecto"
+}
+```
+
+```json
+PATCH /projects/123/synopsis
+{
+  "synopsis": "Nueva sinopsis"
+}
+```
+
+```json
+GET /projects/123/treatment
+{
+  "treatment": "Tratamiento almacenado"
+}
+```
+
+```json
+PATCH /projects/123/treatment
+{
+  "treatment": "Tratamiento actualizado"
 }
 ```
 
