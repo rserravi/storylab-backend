@@ -128,10 +128,8 @@ class TurningPointItem(BaseModel):
 
 
 class TurningPointsIn(BaseModel):
-    genre: str
-    theme: str
-    premise: str
     project_id: str
+    screenwriter: bool = True
 
 
 class TurningPointsOut(BaseModel):
@@ -140,12 +138,15 @@ class TurningPointsOut(BaseModel):
 
 @router.post("/turning-points", response_model=TurningPointsOut)
 async def generate_turning_points(
-    payload: TurningPointsIn, me: Annotated[UserPublic, Depends(get_current_user)]
+    payload: TurningPointsIn,
+    me: Annotated[UserPublic, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    model = pick_text_model(True)
-    prompt = TURNING_POINTS_PROMPT.format(
-        genre=payload.genre, theme=payload.theme, premise=payload.premise
-    )
+    model = pick_text_model(payload.screenwriter)
+    project = await session.get(Project, payload.project_id)
+    if not project or not project.treatment:
+        raise HTTPException(404, "Project not found or missing treatment.")
+    prompt = TURNING_POINTS_PROMPT.format(treatment=project.treatment)
     async with OllamaClient() as client:
         text = await client.generate(model=model, prompt=prompt)
     try:
