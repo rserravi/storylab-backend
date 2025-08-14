@@ -2,9 +2,12 @@ import json
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.settings import settings
 from app.utils.ollama_client import OllamaClient
 from app.auth.security import get_current_user, UserPublic
+from app.db.database import get_session
+from app.db.models import Project
 from .prompts import (
     SYNOPSIS_PROMPT, TREATMENT_PROMPT, TURNING_POINTS_PROMPT, CHARACTER_PROMPT,
     LOCATION_PROMPT, SCENE_PROMPT, DIALOGUE_POLISH_PROMPT, REVIEW_PROMPT
@@ -42,7 +45,11 @@ class SynopsisOut(BaseModel):
     synopsis: str
 
 @router.post("/synopsis", response_model=SynopsisOut)
-async def generate_synopsis(payload: SynopsisIn, me: Annotated[UserPublic, Depends(get_current_user)]):
+async def generate_synopsis(
+    payload: SynopsisIn,
+    me: Annotated[UserPublic, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
     model = pick_text_model(payload.screenwriter)
     subgenres = ", ".join(payload.subgenre or [])
     prompt = SYNOPSIS_PROMPT.format(
@@ -54,9 +61,13 @@ async def generate_synopsis(payload: SynopsisIn, me: Annotated[UserPublic, Depen
     )
     async with OllamaClient() as client:
         text = await client.generate(model=model, prompt=prompt)
-    synopsis = text.strip()
-    await save_synopsis(payload.project_id, synopsis)
-    return {"synopsis": synopsis}
+    project = await session.get(Project, payload.project_id)
+    if not project:
+        raise HTTPException(404, "Project not found.")
+    project.synopsis = text.strip()
+    await session.commit()
+    return {"synopsis": project.synopsis}
+
 
 # ---------- Treatment ----------
 class TreatmentIn(BaseModel):
