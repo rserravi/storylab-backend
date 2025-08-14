@@ -167,8 +167,6 @@ async def delete_project(
 
 @router.get("/{project_id}/treatment", response_model=TreatmentOut)
 async def get_treatment(
-@router.get("/{project_id}/synopsis", response_model=SynopsisOut)
-async def get_synopsis(
     project_id: str,
     me: Annotated[UserPublic, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -184,6 +182,24 @@ async def get_synopsis(
 async def patch_treatment(
     project_id: str,
     payload: TreatmentPatch,
+    me: Annotated[UserPublic, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    p = await session.get(Project, project_id)
+    _ensure_owner(p, me.id)
+    p.treatment = payload.treatment
+    await session.commit()
+    return {"treatment": p.treatment}
+
+
+@router.get("/{project_id}/synopsis", response_model=SynopsisOut)
+async def get_synopsis(
+    project_id: str,
+    me: Annotated[UserPublic, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    p = await session.get(Project, project_id)
+    _ensure_owner(p, me.id)
     return {"synopsis": p.synopsis}
 
 
@@ -196,9 +212,6 @@ async def patch_synopsis(
 ):
     p = await session.get(Project, project_id)
     _ensure_owner(p, me.id)
-    p.treatment = payload.treatment
-    await session.commit()
-    return {"treatment": p.treatment}
     if "synopsis" in payload.model_fields_set:
         p.synopsis = payload.synopsis
         await session.commit()
