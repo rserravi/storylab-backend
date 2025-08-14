@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.security import UserPublic, get_current_user
 from app.db.database import get_session
-from app.db.models import Project, Screenplay
+from app.db.models import Screenplay
 from app.settings import settings
 from app.turning_points import TURNING_POINT_TITLES
 from app.utils.ollama_client import OllamaClient
@@ -65,15 +65,6 @@ def pick_scene_model(creative: bool = False):
     )
 
 
-async def save_synopsis(project_id: str, synopsis: str) -> None:
-    """Persist the synopsis for the given project.
-
-    Placeholder for future persistence logic.
-    """
-
-    return None
-
-
 # ---------- Schemas ----------
 class SynopsisIn(BaseModel):
     idea: str
@@ -81,7 +72,7 @@ class SynopsisIn(BaseModel):
     mainTheme: str
     genre: str
     subgenres: Optional[list[str]] = None
-    project_id: str
+    screenplay_id: str
     screenwriter: bool = False
 
 
@@ -106,12 +97,13 @@ async def generate_synopsis(
         subgenres=subgenres,
     )
     text, ia_log = await run_ai(model=model, prompt=prompt)
-    project = await session.get(Project, payload.project_id)
-    if not project:
-        raise HTTPException(404, "Project not found.")
-    project.synopsis = text.strip()
+    screenplay = await session.get(Screenplay, payload.screenplay_id)
+    if not screenplay or screenplay.owner_id != me.id:
+        raise HTTPException(404, "Screenplay not found.")
+    screenplay.synopsis = text.strip()
     await session.commit()
-    return {"synopsis": project.synopsis, "iaLog": ia_log}
+    await session.refresh(screenplay)
+    return {"synopsis": screenplay.synopsis, "iaLog": ia_log}
 
 
 # ---------- Treatment ----------
@@ -120,7 +112,7 @@ class TreatmentIn(BaseModel):
     tone: Optional[str] = "cinematográfico"
     audience: Optional[str] = "adulto general"
     references: Optional[str] = None
-    project_id: str
+    screenplay_id: str
     screenwriter: bool = True
 
 
@@ -136,20 +128,23 @@ async def generate_treatment(
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     model = pick_text_model(payload.screenwriter)
-    project = await session.get(Project, payload.project_id)
-    if not project or not project.synopsis:
-        raise HTTPException(404, "Project not found or missing synopsis.")
+    screenplay = await session.get(Screenplay, payload.screenplay_id)
+    if not screenplay or screenplay.owner_id != me.id:
+        raise HTTPException(404, "Screenplay not found.")
+    if not screenplay.synopsis:
+        raise HTTPException(404, "Screenplay missing synopsis.")
     prompt = TREATMENT_PROMPT.format(
         tone=payload.tone,
         audience=payload.audience,
         references=payload.references or "",
         logline=payload.logline,
-        synopsis=project.synopsis,
+        synopsis=screenplay.synopsis,
     )
     text, ia_log = await run_ai(model=model, prompt=prompt)
-    project.treatment = text.strip()
+    screenplay.treatment = text.strip()
     await session.commit()
-    return {"treatment": project.treatment, "iaLog": ia_log}
+    await session.refresh(screenplay)
+    return {"treatment": screenplay.treatment, "iaLog": ia_log}
 
 
 # ---------- Turning Points ----------
@@ -160,7 +155,6 @@ class TurningPointItem(BaseModel):
 
 
 class TurningPointsIn(BaseModel):
-    project_id: str
     screenplay_id: str
     screenwriter: bool = True
 
@@ -177,13 +171,12 @@ async def generate_turning_points(
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     model = pick_text_model(payload.screenwriter)
-    project = await session.get(Project, payload.project_id)
-    if not project or not project.treatment:
-        raise HTTPException(404, "Project not found or missing treatment.")
     screenplay = await session.get(Screenplay, payload.screenplay_id)
     if not screenplay or screenplay.owner_id != me.id:
         raise HTTPException(404, "Screenplay not found.")
-    prompt = TURNING_POINTS_PROMPT.format(treatment=project.treatment)
+    if not screenplay.treatment:
+        raise HTTPException(404, "Screenplay missing treatment.")
+    prompt = TURNING_POINTS_PROMPT.format(treatment=screenplay.treatment)
     text, ia_log = await run_ai(model=model, prompt=prompt)
     try:
         data = json.loads(text)
@@ -226,7 +219,7 @@ class CharacterIn(BaseModel):
     role: str
     goal: Optional[str] = None
     conflict: Optional[str] = None
-    project_id: str
+    screenplay_id: str
     creative: bool = False
 
 
@@ -267,7 +260,7 @@ class LocationIn(BaseModel):
     seed_name: str
     genre: str
     notes: Optional[str] = None
-    project_id: str
+    screenplay_id: str
     creative: bool = False
 
 
@@ -299,7 +292,7 @@ class SceneIn(BaseModel):
     context: str
     goal: str
     style: Optional[str] = "Hollywood estándar"
-    project_id: str
+    screenplay_id: str
     creative: bool = False
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
@@ -334,7 +327,7 @@ async def generate_scene(
 # ---------- Dialogue Polish ----------
 class DialogueIn(BaseModel):
     raw: str
-    project_id: str
+    screenplay_id: str
     creative: bool = False
 
 
@@ -356,7 +349,7 @@ async def polish_dialogue(
 # ---------- Review ----------
 class ReviewIn(BaseModel):
     text: str
-    project_id: str
+    screenplay_id: str
     screenwriter: bool = True
 
 

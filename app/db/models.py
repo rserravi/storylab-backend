@@ -42,8 +42,6 @@ class Project(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
     name: Mapped[str] = mapped_column(String(128))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    synopsis: Mapped[str | None] = mapped_column(Text, nullable=True)
-    treatment: Mapped[str | None] = mapped_column(Text, nullable=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -66,6 +64,8 @@ class Screenplay(Base):
     )
     title: Mapped[str] = mapped_column(String(200))
     logline: Mapped[str | None] = mapped_column(Text, nullable=True)
+    synopsis: Mapped[str | None] = mapped_column(Text, nullable=True)
+    treatment: Mapped[str | None] = mapped_column(Text, nullable=True)
     state: Mapped[str] = mapped_column(String(16), default="S1")
 
     turning_points: Mapped[list[dict]] = mapped_column(

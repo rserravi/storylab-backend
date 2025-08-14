@@ -2,7 +2,7 @@
 
 ## AI and Media Endpoints
 
-Los endpoints que generan contenido aceptan ahora un campo `project_id` para asociar los resultados con un proyecto específico.
+Los endpoints que generan contenido aceptan ahora un campo `screenplay_id` para asociar los resultados con un guion específico.
 
 ### Endpoints afectados
 
@@ -15,7 +15,7 @@ Los endpoints que generan contenido aceptan ahora un campo `project_id` para aso
 - `POST /ai/review`
 - `POST /ai/image`
 
-El endpoint `POST /ai/treatment` ahora guarda el tratamiento generado en la base de datos del proyecto asociado.
+El endpoint `POST /ai/treatment` ahora guarda el tratamiento generado en la base de datos del screenplay asociado.
 `POST /ai/turning-points` genera los cinco Puntos de Giro canónicos (TP1–TP5) devolviendo solo sus descripciones, basadas en el Tratamiento; los títulos se asignan automáticamente.
 
 ### Ejemplo de solicitud
@@ -23,7 +23,7 @@ El endpoint `POST /ai/treatment` ahora guarda el tratamiento generado en la base
 ```json
 POST /ai/treatment
 {
-  "project_id": "123",
+  "screenplay_id": "123",
   "logline": "Un ejemplo de logline",
   "tone": "cinematográfico"
 }
@@ -32,39 +32,9 @@ POST /ai/treatment
 ```json
 POST /ai/image
 {
-  "project_id": "123",
+  "screenplay_id": "123",
   "prompt": "Atardecer en la montaña",
   "style": "fast"
-}
-```
-
-## Ejemplos de sinopsis y tratamiento de proyectos
-
-```json
-GET /projects/123/synopsis
-{
-  "synopsis": "Sinopsis actual del proyecto"
-}
-```
-
-```json
-PATCH /projects/123/synopsis
-{
-  "synopsis": "Nueva sinopsis"
-}
-```
-
-```json
-GET /projects/123/treatment
-{
-  "treatment": "Tratamiento almacenado"
-}
-```
-
-```json
-PATCH /projects/123/treatment
-{
-  "treatment": "Tratamiento actualizado"
 }
 ```
 
