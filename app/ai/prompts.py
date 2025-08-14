@@ -20,7 +20,8 @@ Logline: {logline}
 TURNING_POINTS_PROMPT = """Propón 5 Puntos de Giro (S3), con título y descripción (2-3 frases cada uno).
 Basados en el siguiente Tratamiento:
 {treatment}
-Devuelve JSON: [{{"id":"TP1","title":"...","description":"..."}}...]
+Devuelve únicamente un array JSON válido, sin texto adicional ni marcadores de código.
+Ejemplo: [{{"id":"TP1","title":"...","description":"..."}}]
 """
 
 CHARACTER_PROMPT = """Diseña un personaje memorable (S4).
