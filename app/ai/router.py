@@ -1,6 +1,6 @@
 import json
-from typing import Annotated, Optional, Literal
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Annotated, Optional
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from app.settings import settings
 from app.utils.ollama_client import OllamaClient
@@ -25,6 +25,7 @@ class SynopsisIn(BaseModel):
     premise: str
     mainTheme: str
     genre: str
+    subgenres: Optional[str] = None
     screenwriter: bool = False
 
 class SynopsisOut(BaseModel):
@@ -34,7 +35,11 @@ class SynopsisOut(BaseModel):
 async def generate_synopsis(payload: SynopsisIn, me: Annotated[UserPublic, Depends(get_current_user)]):
     model = pick_text_model(payload.screenwriter)
     prompt = SYNOPSIS_PROMPT.format(
-        idea=payload.idea, premise=payload.premise, theme=payload.mainTheme, genre=payload.genre
+        idea=payload.idea,
+        premise=payload.premise,
+        theme=payload.mainTheme,
+        genre=payload.genre,
+        subgenres=payload.subgenres or "",
     )
     async with OllamaClient() as client:
         text = await client.generate(model=model, prompt=prompt)
