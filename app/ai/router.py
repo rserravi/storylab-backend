@@ -1,6 +1,6 @@
 import json
-from typing import Annotated, Optional, Literal
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Annotated, Optional
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from app.settings import settings
 from app.utils.ollama_client import OllamaClient
@@ -19,12 +19,23 @@ def pick_text_model(screenwriter: bool = False):
 def pick_scene_model(creative: bool = False):
     return settings.ai_text_scene_creative if creative else settings.ai_text_scene_default
 
+
+async def save_synopsis(project_id: str, synopsis: str) -> None:
+    """Persist the synopsis for the given project.
+
+    Placeholder for future persistence logic.
+    """
+
+    return None
+
 # ---------- Schemas ----------
 class SynopsisIn(BaseModel):
     idea: str
     premise: str
     mainTheme: str
     genre: str
+    subgenre: list[str] | None = None
+    project_id: str
     screenwriter: bool = False
 
 class SynopsisOut(BaseModel):
@@ -33,12 +44,19 @@ class SynopsisOut(BaseModel):
 @router.post("/synopsis", response_model=SynopsisOut)
 async def generate_synopsis(payload: SynopsisIn, me: Annotated[UserPublic, Depends(get_current_user)]):
     model = pick_text_model(payload.screenwriter)
+    subgenres = ", ".join(payload.subgenre or [])
     prompt = SYNOPSIS_PROMPT.format(
-        idea=payload.idea, premise=payload.premise, theme=payload.mainTheme, genre=payload.genre
+        idea=payload.idea,
+        premise=payload.premise,
+        theme=payload.mainTheme,
+        genre=payload.genre,
+        subgenres=subgenres,
     )
     async with OllamaClient() as client:
         text = await client.generate(model=model, prompt=prompt)
-    return {"synopsis": text.strip()}
+    synopsis = text.strip()
+    await save_synopsis(payload.project_id, synopsis)
+    return {"synopsis": synopsis}
 
 # ---------- Treatment ----------
 class TreatmentIn(BaseModel):

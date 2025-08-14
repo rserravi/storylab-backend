@@ -5,6 +5,7 @@ Contexto:
 - Premisa: {premise}
 - Tema: {theme}
 - Género: {genre}
+- Subgéneros: {subgenres}
 """
 
 TREATMENT_PROMPT = """Escribe un Tratamiento breve (6-10 párrafos) cubriendo el arco de 3 actos.
