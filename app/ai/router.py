@@ -1,24 +1,28 @@
 import json
+from time import perf_counter
 from typing import Annotated, Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.settings import settings
-from app.utils.ollama_client import OllamaClient
-from app.auth.security import get_current_user, UserPublic
+
+from app.auth.security import UserPublic, get_current_user
 from app.db.database import get_session
 from app.db.models import Project, Screenplay
+from app.settings import settings
+from app.turning_points import TURNING_POINT_TITLES
+from app.utils.ollama_client import OllamaClient
+
 from .prompts import (
+    CHARACTER_PROMPT,
+    DIALOGUE_POLISH_PROMPT,
+    LOCATION_PROMPT,
+    REVIEW_PROMPT,
+    SCENE_PROMPT,
     SYNOPSIS_PROMPT,
     TREATMENT_PROMPT,
     TURNING_POINTS_PROMPT,
-    CHARACTER_PROMPT,
-    LOCATION_PROMPT,
-    SCENE_PROMPT,
-    DIALOGUE_POLISH_PROMPT,
-    REVIEW_PROMPT,
 )
-from app.turning_points import TURNING_POINT_TITLES
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -31,6 +35,24 @@ TURNING_POINT_TITLES = {
     "TP4": "Break into Act Three",
     "TP5": "Climax",
 }
+
+# ---------- IA Log ----------
+
+
+class IALog(BaseModel):
+    time_thinking: float
+    original_message: str
+    model: str
+
+
+async def run_ai(model: str, prompt: str, **kwargs) -> tuple[str, IALog]:
+    start = perf_counter()
+    async with OllamaClient() as client:
+        text = await client.generate(model=model, prompt=prompt, **kwargs)
+    duration = perf_counter() - start
+    ia_log = IALog(time_thinking=duration, original_message=text, model=model)
+    return text, ia_log
+
 
 # ---------- Helpers modelo ----------
 def pick_text_model(screenwriter: bool = False):
@@ -65,6 +87,7 @@ class SynopsisIn(BaseModel):
 
 class SynopsisOut(BaseModel):
     synopsis: str
+    iaLog: IALog
 
 
 @router.post("/synopsis", response_model=SynopsisOut)
@@ -82,14 +105,13 @@ async def generate_synopsis(
         genre=payload.genre,
         subgenres=subgenres,
     )
-    async with OllamaClient() as client:
-        text = await client.generate(model=model, prompt=prompt)
+    text, ia_log = await run_ai(model=model, prompt=prompt)
     project = await session.get(Project, payload.project_id)
     if not project:
         raise HTTPException(404, "Project not found.")
     project.synopsis = text.strip()
     await session.commit()
-    return {"synopsis": project.synopsis}
+    return {"synopsis": project.synopsis, "iaLog": ia_log}
 
 
 # ---------- Treatment ----------
@@ -104,6 +126,7 @@ class TreatmentIn(BaseModel):
 
 class TreatmentOut(BaseModel):
     treatment: str
+    iaLog: IALog
 
 
 @router.post("/treatment", response_model=TreatmentOut)
@@ -123,11 +146,10 @@ async def generate_treatment(
         logline=payload.logline,
         synopsis=project.synopsis,
     )
-    async with OllamaClient() as client:
-        text = await client.generate(model=model, prompt=prompt)
+    text, ia_log = await run_ai(model=model, prompt=prompt)
     project.treatment = text.strip()
     await session.commit()
-    return {"treatment": project.treatment}
+    return {"treatment": project.treatment, "iaLog": ia_log}
 
 
 # ---------- Turning Points ----------
@@ -145,6 +167,7 @@ class TurningPointsIn(BaseModel):
 
 class TurningPointsOut(BaseModel):
     points: list[TurningPointItem]
+    iaLog: IALog
 
 
 @router.post("/turning-points", response_model=TurningPointsOut)
@@ -161,8 +184,7 @@ async def generate_turning_points(
     if not screenplay or screenplay.owner_id != me.id:
         raise HTTPException(404, "Screenplay not found.")
     prompt = TURNING_POINTS_PROMPT.format(treatment=project.treatment)
-    async with OllamaClient() as client:
-        text = await client.generate(model=model, prompt=prompt)
+    text, ia_log = await run_ai(model=model, prompt=prompt)
     try:
         data = json.loads(text)
         items = [
@@ -175,11 +197,17 @@ async def generate_turning_points(
         ]
 
     except Exception:
-        raise HTTPException(502, "AI returned invalid JSON for turning points.")
+        raise HTTPException(
+            502,
+            detail={
+                "error": "AI returned invalid JSON for turning points.",
+                "iaLog": ia_log.model_dump(),
+            },
+        )
     screenplay.turning_points = [tp.model_dump() for tp in items]
     await session.commit()
     await session.refresh(screenplay)
-    return {"points": items}
+    return {"points": items, "iaLog": ia_log}
 
 
 # ---------- Character ----------
@@ -190,6 +218,7 @@ class CharacterOut(BaseModel):
     goal: Optional[str] = None
     conflict: Optional[str] = None
     arc: Optional[str] = None
+    iaLog: IALog
 
 
 class CharacterIn(BaseModel):
@@ -212,12 +241,18 @@ async def generate_character(
         goal=payload.goal or "",
         conflict=payload.conflict or "",
     )
-    async with OllamaClient() as client:
-        text = await client.generate(model=model, prompt=prompt)
+    text, ia_log = await run_ai(model=model, prompt=prompt)
     try:
-        return CharacterOut(**json.loads(text))
+        data = json.loads(text)
+        return CharacterOut(**data, iaLog=ia_log)
     except Exception:
-        raise HTTPException(502, "AI returned invalid JSON for character.")
+        raise HTTPException(
+            502,
+            detail={
+                "error": "AI returned invalid JSON for character.",
+                "iaLog": ia_log.model_dump(),
+            },
+        )
 
 
 # ---------- Location ----------
@@ -225,6 +260,7 @@ class LocationOut(BaseModel):
     id: str
     name: str
     details: Optional[str] = None
+    iaLog: IALog
 
 
 class LocationIn(BaseModel):
@@ -243,12 +279,18 @@ async def generate_location(
     prompt = LOCATION_PROMPT.format(
         seed_name=payload.seed_name, genre=payload.genre, notes=payload.notes or ""
     )
-    async with OllamaClient() as client:
-        text = await client.generate(model=model, prompt=prompt)
+    text, ia_log = await run_ai(model=model, prompt=prompt)
     try:
-        return LocationOut(**json.loads(text))
+        data = json.loads(text)
+        return LocationOut(**data, iaLog=ia_log)
     except Exception:
-        raise HTTPException(502, "AI returned invalid JSON for location.")
+        raise HTTPException(
+            502,
+            detail={
+                "error": "AI returned invalid JSON for location.",
+                "iaLog": ia_log.model_dump(),
+            },
+        )
 
 
 # ---------- Scene ----------
@@ -265,6 +307,7 @@ class SceneIn(BaseModel):
 
 class SceneOut(BaseModel):
     content: str
+    iaLog: IALog
 
 
 @router.post("/scene", response_model=SceneOut)
@@ -279,14 +322,13 @@ async def generate_scene(
         style=payload.style or "Hollywood estándar",
         creative_level="alto" if payload.creative else "moderado",
     )
-    async with OllamaClient() as client:
-        text = await client.generate(
-            model=model,
-            prompt=prompt,
-            temperature=payload.temperature,
-            max_tokens=payload.max_tokens,
-        )
-    return {"content": text.strip()}
+    text, ia_log = await run_ai(
+        model=model,
+        prompt=prompt,
+        temperature=payload.temperature,
+        max_tokens=payload.max_tokens,
+    )
+    return {"content": text.strip(), "iaLog": ia_log}
 
 
 # ---------- Dialogue Polish ----------
@@ -298,6 +340,7 @@ class DialogueIn(BaseModel):
 
 class DialogueOut(BaseModel):
     content: str
+    iaLog: IALog
 
 
 @router.post("/dialogue/polish", response_model=DialogueOut)
@@ -306,9 +349,8 @@ async def polish_dialogue(
 ):
     model = pick_scene_model(payload.creative)
     prompt = DIALOGUE_POLISH_PROMPT.format(raw=payload.raw)
-    async with OllamaClient() as client:
-        text = await client.generate(model=model, prompt=prompt)
-    return {"content": text.strip()}
+    text, ia_log = await run_ai(model=model, prompt=prompt)
+    return {"content": text.strip(), "iaLog": ia_log}
 
 
 # ---------- Review ----------
@@ -320,6 +362,7 @@ class ReviewIn(BaseModel):
 
 class ReviewOut(BaseModel):
     report: str
+    iaLog: IALog
 
 
 @router.post("/review", response_model=ReviewOut)
@@ -328,6 +371,5 @@ async def review_script(
 ):
     model = pick_text_model(payload.screenwriter)
     prompt = REVIEW_PROMPT.format(text=payload.text)
-    async with OllamaClient() as client:
-        text = await client.generate(model=model, prompt=prompt)
-    return {"report": text.strip()}
+    text, ia_log = await run_ai(model=model, prompt=prompt)
+    return {"report": text.strip(), "iaLog": ia_log}

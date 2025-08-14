@@ -1,14 +1,15 @@
 import json
+
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from app.main import app
-from app.db.models import Base, User, Project, Screenplay
-from app.turning_points import TURNING_POINT_TITLES
-from app.db.database import get_session
-from app.auth.security import get_current_user, UserPublic, hash_password
 from app.ai.router import TURNING_POINT_TITLES
+from app.auth.security import UserPublic, get_current_user, hash_password
+from app.db.database import get_session
+from app.db.models import Base, Project, Screenplay, User
+from app.main import app
+from app.turning_points import TURNING_POINT_TITLES
 
 
 @pytest.fixture
@@ -46,9 +47,7 @@ async def client(session):
 
 
 async def create_project_and_screenplay(session, user):
-    project = Project(
-        name="Proj", owner_id=user.id, synopsis="syn", treatment="treat"
-    )
+    project = Project(name="Proj", owner_id=user.id, synopsis="syn", treatment="treat")
     session.add(project)
     await session.commit()
     await session.refresh(project)
@@ -79,16 +78,14 @@ async def test_turning_points_valid_json(client, session, monkeypatch):
     async def fake_generate(self, model, prompt, **kwargs):
         return json.dumps(ai_turning_points)
 
-
-    monkeypatch.setattr(
-        "app.utils.ollama_client.OllamaClient.generate", fake_generate
-    )
+    monkeypatch.setattr("app.utils.ollama_client.OllamaClient.generate", fake_generate)
 
     resp = await client.post(
         "/ai/turning-points",
         json={"project_id": project.id, "screenplay_id": screenplay.id},
     )
     assert resp.status_code == 200
+    data = resp.json()
     expected = [
         {
             "id": "TP1",
@@ -97,7 +94,8 @@ async def test_turning_points_valid_json(client, session, monkeypatch):
         }
     ]
 
-    assert resp.json()["points"] == expected
+    assert data["points"] == expected
+    assert data["iaLog"]["original_message"] == json.dumps(ai_turning_points)
 
     await session.refresh(screenplay)
     assert screenplay.turning_points == expected
@@ -110,19 +108,16 @@ async def test_turning_points_invalid_json(client, session, monkeypatch):
     async def fake_generate(self, model, prompt, **kwargs):
         return "invalid"
 
-    monkeypatch.setattr(
-        "app.utils.ollama_client.OllamaClient.generate", fake_generate
-    )
+    monkeypatch.setattr("app.utils.ollama_client.OllamaClient.generate", fake_generate)
 
     resp = await client.post(
         "/ai/turning-points",
         json={"project_id": project.id, "screenplay_id": screenplay.id},
     )
     assert resp.status_code == 502
-    assert (
-        resp.json()["detail"]
-        == "AI returned invalid JSON for turning points."
-    )
+    data = resp.json()["detail"]
+    assert data["error"] == "AI returned invalid JSON for turning points."
+    assert data["iaLog"]["original_message"] == "invalid"
 
     await session.refresh(screenplay)
     assert screenplay.turning_points == []

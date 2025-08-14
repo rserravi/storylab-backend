@@ -1,14 +1,15 @@
 import json
+
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.main import app
-from app.db.models import Base, User
-from app.turning_points import TURNING_POINT_TITLES
-from app.db.database import get_session
-from app.auth.security import get_current_user, UserPublic, hash_password
 from app.ai.router import TURNING_POINT_TITLES
+from app.auth.security import UserPublic, get_current_user, hash_password
+from app.db.database import get_session
+from app.db.models import Base, User
+from app.main import app
+from app.turning_points import TURNING_POINT_TITLES
 
 
 @pytest.fixture
@@ -42,7 +43,6 @@ async def client(session, monkeypatch):
         "FAKE SYNOPSIS",
         "FAKE TREATMENT",
         json.dumps([{"id": "TP1", "description": "Desc"}]),
-
     ]
 
     async def fake_generate(self, model, prompt, **kwargs):
@@ -73,7 +73,10 @@ async def test_generate_get_patch_synopsis_treatment(client):
     }
     resp = await client.post("/ai/synopsis", json=syn_payload)
     assert resp.status_code == 200
-    assert resp.json()["synopsis"] == "FAKE SYNOPSIS"
+    data = resp.json()
+    assert data["synopsis"] == "FAKE SYNOPSIS"
+    assert data["iaLog"]["original_message"] == "FAKE SYNOPSIS"
+    assert "time_thinking" in data["iaLog"]
 
     # GET project to verify synopsis
     resp = await client.get(f"/projects/{project_id}")
@@ -92,7 +95,10 @@ async def test_generate_get_patch_synopsis_treatment(client):
     treat_payload = {"logline": "line", "project_id": project_id}
     resp = await client.post("/ai/treatment", json=treat_payload)
     assert resp.status_code == 200
-    assert resp.json()["treatment"] == "FAKE TREATMENT"
+    data = resp.json()
+    assert data["treatment"] == "FAKE TREATMENT"
+    assert data["iaLog"]["original_message"] == "FAKE TREATMENT"
+    assert "model" in data["iaLog"]
 
     # GET project to verify treatment
     resp = await client.get(f"/projects/{project_id}")
@@ -117,10 +123,14 @@ async def test_generate_get_patch_synopsis_treatment(client):
     tp_payload = {"project_id": project_id, "screenplay_id": screenplay_id}
     resp = await client.post("/ai/turning-points", json=tp_payload)
     assert resp.status_code == 200
+    data = resp.json()
     expected_title = TURNING_POINT_TITLES["TP1"]
-    assert resp.json()["points"][0]["id"] == "TP1"
-    assert resp.json()["points"][0]["title"] == expected_title
-    assert resp.json()["points"][0]["description"] == "Desc"
+    assert data["points"][0]["id"] == "TP1"
+    assert data["points"][0]["title"] == expected_title
+    assert data["points"][0]["description"] == "Desc"
+    assert data["iaLog"]["original_message"] == json.dumps(
+        [{"id": "TP1", "description": "Desc"}]
+    )
 
     # verify persisted turning points
     resp = await client.get(f"/screenplays/{screenplay_id}")
@@ -128,4 +138,3 @@ async def test_generate_get_patch_synopsis_treatment(client):
     assert resp.json()["turning_points"][0]["id"] == "TP1"
     assert resp.json()["turning_points"][0]["title"] == expected_title
     assert resp.json()["turning_points"][0]["description"] == "Desc"
-
