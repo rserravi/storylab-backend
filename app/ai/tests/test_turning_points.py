@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from app.main import app
 from app.db.models import Base, User, Project, Screenplay
+from app.turning_points import TURNING_POINT_TITLES
 from app.db.database import get_session
 from app.auth.security import get_current_user, UserPublic, hash_password
 from app.ai.router import TURNING_POINT_TITLES
@@ -78,6 +79,7 @@ async def test_turning_points_valid_json(client, session, monkeypatch):
     async def fake_generate(self, model, prompt, **kwargs):
         return json.dumps(ai_turning_points)
 
+
     monkeypatch.setattr(
         "app.utils.ollama_client.OllamaClient.generate", fake_generate
     )
@@ -94,6 +96,7 @@ async def test_turning_points_valid_json(client, session, monkeypatch):
             "description": "Desc",
         }
     ]
+
     assert resp.json()["points"] == expected
 
     await session.refresh(screenplay)
