@@ -14,21 +14,25 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=2, max_length=128)
     description: Optional[str] = None
+    treatment: Optional[str] = None
+
 
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=128)
     description: Optional[str] = None
+    treatment: Optional[str] = None
+
 
 
 class ProjectOut(BaseModel):
     id: str
     name: str
     description: Optional[str]
+    treatment: Optional[str]
     owner_id: str
     created_at: str
     updated_at: str
-
 
 class SynopsisPatch(BaseModel):
     synopsis: Optional[str] = None
@@ -36,7 +40,6 @@ class SynopsisPatch(BaseModel):
 
 class SynopsisOut(BaseModel):
     synopsis: Optional[str]
-
 
 def _iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -64,6 +67,7 @@ async def list_projects(
             id=r.id,
             name=r.name,
             description=r.description,
+            treatment=r.treatment,
             owner_id=r.owner_id,
             created_at=r.created_at.isoformat(),
             updated_at=r.updated_at.isoformat(),
@@ -78,7 +82,12 @@ async def create_project(
     me: Annotated[UserPublic, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    p = Project(name=payload.name, description=payload.description, owner_id=me.id)
+    p = Project(
+        name=payload.name,
+        description=payload.description,
+        treatment=payload.treatment,
+        owner_id=me.id,
+    )
     session.add(p)
     await session.commit()
     await session.refresh(p)
@@ -104,6 +113,7 @@ async def get_project(
         id=p.id,
         name=p.name,
         description=p.description,
+        treatment=p.treatment,
         owner_id=p.owner_id,
         created_at=p.created_at.isoformat(),
         updated_at=p.updated_at.isoformat(),
@@ -123,6 +133,8 @@ async def update_project(
         p.name = payload.name
     if payload.description is not None:
         p.description = payload.description
+    if payload.treatment is not None:
+        p.treatment = payload.treatment
     await session.commit()
     await session.refresh(p)
     return ProjectOut(
