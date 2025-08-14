@@ -9,6 +9,8 @@ Contexto:
 """
 
 TREATMENT_PROMPT = """Escribe un Tratamiento breve (6-10 párrafos) cubriendo el arco de 3 actos.
+Basado en la sinopsis proporcionada.
+- Sinopsis: {synopsis}
 - Tono: {tone}
 - Público: {audience}
 - Referencias: {references}
