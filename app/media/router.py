@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.settings import settings
-import httpx
 
 router = APIRouter(prefix="/ai", tags=["AI","Media"])
 

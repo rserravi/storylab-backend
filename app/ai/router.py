@@ -1,6 +1,6 @@
 import json
-from typing import Annotated, Optional, Literal
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Annotated, Optional
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.settings import settings
@@ -22,12 +22,22 @@ def pick_text_model(screenwriter: bool = False):
 def pick_scene_model(creative: bool = False):
     return settings.ai_text_scene_creative if creative else settings.ai_text_scene_default
 
+
+async def save_synopsis(project_id: str, synopsis: str) -> None:
+    """Persist the synopsis for the given project.
+
+    Placeholder for future persistence logic.
+    """
+
+    return None
+
 # ---------- Schemas ----------
 class SynopsisIn(BaseModel):
     idea: str
     premise: str
     mainTheme: str
     genre: str
+    subgenres: Optional[str] = None
     project_id: str
     screenwriter: bool = False
 
@@ -41,8 +51,13 @@ async def generate_synopsis(
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     model = pick_text_model(payload.screenwriter)
+    subgenres = ", ".join(payload.subgenre or [])
     prompt = SYNOPSIS_PROMPT.format(
-        idea=payload.idea, premise=payload.premise, theme=payload.mainTheme, genre=payload.genre
+        idea=payload.idea,
+        premise=payload.premise,
+        theme=payload.mainTheme,
+        genre=payload.genre,
+        subgenres=payload.subgenres or "",
     )
     async with OllamaClient() as client:
         text = await client.generate(model=model, prompt=prompt)
@@ -52,6 +67,7 @@ async def generate_synopsis(
     project.synopsis = text.strip()
     await session.commit()
     return {"synopsis": project.synopsis}
+
 
 # ---------- Treatment ----------
 class TreatmentIn(BaseModel):
