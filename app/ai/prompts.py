@@ -17,19 +17,21 @@ Basado en la sinopsis proporcionada.
 Logline: {logline}
 """
 
-TURNING_POINTS_PROMPT = """Enumera los cinco Puntos de Giro canónicos con una breve explicación (2-3 frases) para cada uno:
+TURNING_POINTS_PROMPT = """Genera una descripción específica (2-3 frases) para cada uno de los cinco Puntos de Giro canónicos.
 
-1. Incidente (Acto I) – invitación a la aventura
-2. Momento de Cambio (fin de Acto I) – decisión que inicia el Acto II
-3. Punto Medio / Ordalía (Acto II, ~min 60) – prueba máxima o punto de no retorno
-4. Crisis (fin de Acto II, ~min 90) – giro que impulsa el desenlace
-5. Clímax (fin de Acto III, ~min 120) – resolución principal
+IDs y títulos fijos:
+TP1: Incidente incitador
+TP2: Momento de Cambio
+TP3: Punto Medio / Ordalía
+TP4: Crisis
+TP5: Clímax
 
-Basados en el siguiente Tratamiento:
+Usa exclusivamente el siguiente Tratamiento para redactar las descripciones. No devuelvas los títulos ni ningún texto adicional.
+
+Tratamiento:
 {treatment}
 
-Devuelve únicamente un array JSON válido con cinco objetos {{id, description}} (ids: TP1–TP5), sin texto adicional ni marcadores de código.
-Ejemplo: [{{"id":"TP1","description":"..."}}]
+Devuelve únicamente un array JSON válido con cinco objetos {{id, description}} (ids: TP1–TP5), sin marcadores de código ni texto extra.
 """
 
 CHARACTER_PROMPT = """Diseña un personaje memorable (S4).
