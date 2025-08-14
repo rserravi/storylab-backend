@@ -17,13 +17,11 @@ class ProjectCreate(BaseModel):
     synopsis: Optional[str] = None
     treatment: Optional[str] = None
 
-
 class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=128)
     description: Optional[str] = None
     synopsis: Optional[str] = None
     treatment: Optional[str] = None
-
 
 class ProjectOut(BaseModel):
     id: str
