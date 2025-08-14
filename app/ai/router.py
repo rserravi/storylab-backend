@@ -75,6 +75,7 @@ class TreatmentIn(BaseModel):
     tone: Optional[str] = "cinematográfico"
     audience: Optional[str] = "adulto general"
     references: Optional[str] = None
+    project_id: str
     screenwriter: bool = True
 
 class TreatmentOut(BaseModel):
@@ -100,6 +101,7 @@ class TurningPointsIn(BaseModel):
     genre: str
     theme: str
     premise: str
+    project_id: str
 
 class TurningPointsOut(BaseModel):
     points: list[TurningPointItem]
@@ -131,6 +133,7 @@ class CharacterIn(BaseModel):
     role: str
     goal: Optional[str] = None
     conflict: Optional[str] = None
+    project_id: str
     creative: bool = False
 
 @router.post("/character", response_model=CharacterOut)
@@ -156,6 +159,7 @@ class LocationIn(BaseModel):
     seed_name: str
     genre: str
     notes: Optional[str] = None
+    project_id: str
     creative: bool = False
 
 @router.post("/location", response_model=LocationOut)
@@ -175,6 +179,7 @@ class SceneIn(BaseModel):
     context: str
     goal: str
     style: Optional[str] = "Hollywood estándar"
+    project_id: str
     creative: bool = False
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
@@ -200,6 +205,7 @@ async def generate_scene(payload: SceneIn, me: Annotated[UserPublic, Depends(get
 # ---------- Dialogue Polish ----------
 class DialogueIn(BaseModel):
     raw: str
+    project_id: str
     creative: bool = False
 
 class DialogueOut(BaseModel):
@@ -216,6 +222,7 @@ async def polish_dialogue(payload: DialogueIn, me: Annotated[UserPublic, Depends
 # ---------- Review ----------
 class ReviewIn(BaseModel):
     text: str
+    project_id: str
     screenwriter: bool = True
 
 class ReviewOut(BaseModel):
