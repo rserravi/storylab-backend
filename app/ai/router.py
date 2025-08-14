@@ -22,6 +22,15 @@ from .prompts import (
 router = APIRouter(prefix="/ai", tags=["AI"])
 
 
+# Fixed titles for Turning Points keyed by their identifiers
+TURNING_POINT_TITLES = {
+    "TP1": "Inciting Incident",
+    "TP2": "Break into Act Two",
+    "TP3": "Midpoint",
+    "TP4": "Break into Act Three",
+    "TP5": "Climax",
+}
+
 # ---------- Helpers modelo ----------
 def pick_text_model(screenwriter: bool = False):
     return settings.ai_text_screenwriter if screenwriter else settings.ai_text_default
@@ -155,7 +164,14 @@ async def generate_turning_points(
         text = await client.generate(model=model, prompt=prompt)
     try:
         data = json.loads(text)
-        items = [TurningPointItem(**tp) for tp in data]
+        items = [
+            TurningPointItem(
+                id=tp["id"],
+                title=TURNING_POINT_TITLES.get(tp["id"], tp.get("title", "")),
+                description=tp["description"],
+            )
+            for tp in data
+        ]
     except Exception:
         raise HTTPException(502, "AI returned invalid JSON for turning points.")
     screenplay.turning_points = [tp.model_dump() for tp in items]

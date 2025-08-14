@@ -7,6 +7,7 @@ from app.main import app
 from app.db.models import Base, User, Project, Screenplay
 from app.db.database import get_session
 from app.auth.security import get_current_user, UserPublic, hash_password
+from app.ai.router import TURNING_POINT_TITLES
 
 
 @pytest.fixture
@@ -72,12 +73,10 @@ async def create_project_and_screenplay(session, user):
 @pytest.mark.asyncio
 async def test_turning_points_valid_json(client, session, monkeypatch):
     project, screenplay = await create_project_and_screenplay(session, client.user)
-    turning_points = [
-        {"id": "TP1", "title": "Title", "description": "Desc"}
-    ]
+    ai_turning_points = [{"id": "TP1", "description": "Desc"}]
 
     async def fake_generate(self, model, prompt, **kwargs):
-        return json.dumps(turning_points)
+        return json.dumps(ai_turning_points)
 
     monkeypatch.setattr(
         "app.utils.ollama_client.OllamaClient.generate", fake_generate
@@ -88,10 +87,17 @@ async def test_turning_points_valid_json(client, session, monkeypatch):
         json={"project_id": project.id, "screenplay_id": screenplay.id},
     )
     assert resp.status_code == 200
-    assert resp.json()["points"] == turning_points
+    expected = [
+        {
+            "id": "TP1",
+            "title": TURNING_POINT_TITLES["TP1"],
+            "description": "Desc",
+        }
+    ]
+    assert resp.json()["points"] == expected
 
     await session.refresh(screenplay)
-    assert screenplay.turning_points == turning_points
+    assert screenplay.turning_points == expected
 
 
 @pytest.mark.asyncio
