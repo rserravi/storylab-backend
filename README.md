@@ -16,6 +16,7 @@ Los endpoints que generan contenido aceptan ahora un campo `project_id` para aso
 - `POST /ai/image`
 
 El endpoint `POST /ai/treatment` ahora guarda el tratamiento generado en la base de datos del proyecto asociado.
+`POST /ai/turning-points` genera los cinco Puntos de Giro canónicos (TP1–TP5) devolviendo solo sus descripciones; los títulos se asignan automáticamente.
 
 ### Ejemplo de solicitud
 

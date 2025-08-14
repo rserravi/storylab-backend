@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Annotated, Optional, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from app.turning_points import TURNING_POINT_TITLES
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.security import get_current_user, UserPublic
 from app.db.database import get_session
@@ -14,10 +15,13 @@ WorkflowState = Literal[
 ]
 
 
-class TurningPoint(BaseModel):
+class TurningPointBase(BaseModel):
     id: str
-    title: str
     description: str
+
+
+class TurningPoint(TurningPointBase):
+    title: str
 
 
 class Character(BaseModel):
@@ -58,7 +62,7 @@ class ScreenplayUpdate(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1)
     logline: Optional[str] = None
     state: Optional[WorkflowState] = None
-    turning_points: Optional[list[TurningPoint]] = None
+    turning_points: Optional[list[TurningPointBase]] = None
     characters: Optional[list[Character]] = None
     subplots: Optional[list[Subplot]] = None
     locations: Optional[list[Location]] = None
@@ -182,7 +186,22 @@ async def update_screenplay(
                 "locations",
                 "scenes",
             }:
-                setattr(sp, field, [item.model_dump() for item in val])
+                if field == "turning_points":
+                    items = []
+                    for tp in val:
+                        title = TURNING_POINT_TITLES.get(tp.id)
+                        if not title:
+                            continue
+                        items.append(
+                            {
+                                "id": tp.id,
+                                "title": title,
+                                "description": tp.description,
+                            }
+                        )
+                    setattr(sp, field, items)
+                else:
+                    setattr(sp, field, [item.model_dump() for item in val])
             else:
                 setattr(sp, field, val)
     await session.commit()
