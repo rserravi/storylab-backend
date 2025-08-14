@@ -36,8 +36,8 @@ async def generate_synopsis(payload: SynopsisIn, me: Annotated[UserPublic, Depen
     prompt = SYNOPSIS_PROMPT.format(
         idea=payload.idea, premise=payload.premise, theme=payload.mainTheme, genre=payload.genre
     )
-    client = OllamaClient()
-    text = await client.generate(model=model, prompt=prompt)
+    async with OllamaClient() as client:
+        text = await client.generate(model=model, prompt=prompt)
     return {"synopsis": text.strip()}
 
 # ---------- Treatment ----------
@@ -57,8 +57,8 @@ async def generate_treatment(payload: TreatmentIn, me: Annotated[UserPublic, Dep
     prompt = TREATMENT_PROMPT.format(
         tone=payload.tone, audience=payload.audience, references=payload.references or "", logline=payload.logline
     )
-    client = OllamaClient()
-    text = await client.generate(model=model, prompt=prompt)
+    async with OllamaClient() as client:
+        text = await client.generate(model=model, prompt=prompt)
     return {"treatment": text.strip()}
 
 # ---------- Turning Points ----------
@@ -79,8 +79,8 @@ class TurningPointsOut(BaseModel):
 async def generate_turning_points(payload: TurningPointsIn, me: Annotated[UserPublic, Depends(get_current_user)]):
     model = pick_text_model(True)
     prompt = TURNING_POINTS_PROMPT.format(genre=payload.genre, theme=payload.theme, premise=payload.premise)
-    client = OllamaClient()
-    text = await client.generate(model=model, prompt=prompt)
+    async with OllamaClient() as client:
+        text = await client.generate(model=model, prompt=prompt)
     try:
         data = json.loads(text)
         items = [TurningPointItem(**tp) for tp in data]
@@ -110,8 +110,8 @@ async def generate_character(payload: CharacterIn, me: Annotated[UserPublic, Dep
     prompt = CHARACTER_PROMPT.format(
         seed_name=payload.seed_name, role=payload.role, goal=payload.goal or "", conflict=payload.conflict or ""
     )
-    client = OllamaClient()
-    text = await client.generate(model=model, prompt=prompt)
+    async with OllamaClient() as client:
+        text = await client.generate(model=model, prompt=prompt)
     try:
         return CharacterOut(**json.loads(text))
     except Exception:
@@ -133,8 +133,8 @@ class LocationIn(BaseModel):
 async def generate_location(payload: LocationIn, me: Annotated[UserPublic, Depends(get_current_user)]):
     model = pick_scene_model(payload.creative)
     prompt = LOCATION_PROMPT.format(seed_name=payload.seed_name, genre=payload.genre, notes=payload.notes or "")
-    client = OllamaClient()
-    text = await client.generate(model=model, prompt=prompt)
+    async with OllamaClient() as client:
+        text = await client.generate(model=model, prompt=prompt)
     try:
         return LocationOut(**json.loads(text))
     except Exception:
@@ -161,11 +161,11 @@ async def generate_scene(payload: SceneIn, me: Annotated[UserPublic, Depends(get
         style=payload.style or "Hollywood estándar",
         creative_level="alto" if payload.creative else "moderado"
     )
-    client = OllamaClient()
-    text = await client.generate(
-        model=model, prompt=prompt,
-        temperature=payload.temperature, max_tokens=payload.max_tokens
-    )
+    async with OllamaClient() as client:
+        text = await client.generate(
+            model=model, prompt=prompt,
+            temperature=payload.temperature, max_tokens=payload.max_tokens
+        )
     return {"content": text.strip()}
 
 # ---------- Dialogue Polish ----------
@@ -180,8 +180,8 @@ class DialogueOut(BaseModel):
 async def polish_dialogue(payload: DialogueIn, me: Annotated[UserPublic, Depends(get_current_user)]):
     model = pick_scene_model(payload.creative)
     prompt = DIALOGUE_POLISH_PROMPT.format(raw=payload.raw)
-    client = OllamaClient()
-    text = await client.generate(model=model, prompt=prompt)
+    async with OllamaClient() as client:
+        text = await client.generate(model=model, prompt=prompt)
     return {"content": text.strip()}
 
 # ---------- Review ----------
@@ -196,6 +196,6 @@ class ReviewOut(BaseModel):
 async def review_script(payload: ReviewIn, me: Annotated[UserPublic, Depends(get_current_user)]):
     model = pick_text_model(payload.screenwriter)
     prompt = REVIEW_PROMPT.format(text=payload.text)
-    client = OllamaClient()
-    text = await client.generate(model=model, prompt=prompt)
+    async with OllamaClient() as client:
+        text = await client.generate(model=model, prompt=prompt)
     return {"report": text.strip()}
