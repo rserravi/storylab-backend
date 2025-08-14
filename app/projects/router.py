@@ -14,21 +14,22 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=2, max_length=128)
     description: Optional[str] = None
+    synopsis: Optional[str] = None
     treatment: Optional[str] = None
-
 
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=128)
     description: Optional[str] = None
+    synopsis: Optional[str] = None
     treatment: Optional[str] = None
-
 
 
 class ProjectOut(BaseModel):
     id: str
     name: str
     description: Optional[str]
+    synopsis: Optional[str]
     treatment: Optional[str]
     owner_id: str
     created_at: str
@@ -73,6 +74,7 @@ async def list_projects(
             id=r.id,
             name=r.name,
             description=r.description,
+            synopsis=r.synopsis,
             treatment=r.treatment,
             owner_id=r.owner_id,
             created_at=r.created_at.isoformat(),
@@ -80,7 +82,6 @@ async def list_projects(
         )
         for r in rows
     ]
-
 
 @router.post("", response_model=ProjectOut, status_code=201)
 async def create_project(
@@ -91,6 +92,7 @@ async def create_project(
     p = Project(
         name=payload.name,
         description=payload.description,
+        synopsis=payload.synopsis,
         treatment=payload.treatment,
         owner_id=me.id,
     )
@@ -101,6 +103,8 @@ async def create_project(
         id=p.id,
         name=p.name,
         description=p.description,
+        synopsis=p.synopsis,
+        treatment=p.treatment,
         owner_id=p.owner_id,
         created_at=p.created_at.isoformat(),
         updated_at=p.updated_at.isoformat(),
@@ -119,6 +123,7 @@ async def get_project(
         id=p.id,
         name=p.name,
         description=p.description,
+        synopsis=p.synopsis,
         treatment=p.treatment,
         owner_id=p.owner_id,
         created_at=p.created_at.isoformat(),
@@ -139,6 +144,9 @@ async def update_project(
         p.name = payload.name
     if payload.description is not None:
         p.description = payload.description
+    if payload.synopsis is not None:
+        p.synopsis = payload.synopsis
+
     if payload.treatment is not None:
         p.treatment = payload.treatment
     await session.commit()
@@ -147,6 +155,8 @@ async def update_project(
         id=p.id,
         name=p.name,
         description=p.description,
+        synopsis=p.synopsis,
+        treatment=p.treatment,
         owner_id=p.owner_id,
         created_at=p.created_at.isoformat(),
         updated_at=p.updated_at.isoformat(),
